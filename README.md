@@ -5,15 +5,13 @@
   <strong>Scan an IP range, but happily.</strong>
   <br/>
   <br/>
-  <pre>
-  Jolly IP is the happier, Java-free alternative to Angry IP Scanner.
-  </pre>
+  <pre>Jolly IP is the happier, Java-free alternative to Angry IP Scanner.</pre>
 </div>
 
 ## Installation
 
 ```console
-$ pip3 install jollyip
+$ pip3 install --user jollyip
 ```
 
 - jollyIP requires **Python 3.5 or later**
