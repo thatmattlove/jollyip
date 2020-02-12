@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "jollyip"
-version = "0.0.1"
+version = "0.0.2"
 description = "Scan an IP range, but happily"
 authors = ["Matt Love <matt@allroads.io>"]
 license = "MIT"
