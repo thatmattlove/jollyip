@@ -49,14 +49,6 @@ version = "1.0.2"
 
 [[package]]
 category = "main"
-description = "A pure python3 version of ICMP ping implementation using raw socket."
-name = "ping3"
-optional = false
-python-versions = ">=3"
-version = "2.4.5"
-
-[[package]]
-category = "main"
 description = "A drop-in replacement for pprint that's actually pretty"
 name = "pprintpp"
 optional = false
@@ -105,7 +97,7 @@ python-versions = "*"
 version = "3.7.4.1"
 
 [metadata]
-content-hash = "856f834f2fa757f56382530579b3ec3232ea6c2b4a13603e2dd1519d18c82770"
+content-hash = "06fd4a5003c8f7713870014949655cb01fc8e0391483d45c470fddee05b4dbc9"
 python-versions = "^3.6"
 
 [metadata.files]
@@ -128,10 +120,6 @@ devtools = [
 icmplib = [
     {file = "icmplib-1.0.2-py3-none-any.whl", hash = "sha256:457edf05637cc77577b95e1e94f0a4580ba90688c9cae6fd49d71e4fbc067697"},
     {file = "icmplib-1.0.2.tar.gz", hash = "sha256:5b80a5182e31235bea57847c40f12dd1027625301d6afdb871acf156888b5100"},
-]
-ping3 = [
-    {file = "ping3-2.4.5-py3-none-any.whl", hash = "sha256:6015cd23db1dd7b76c1e8552c20eb966a2dd39324c64179f2448358ee22c46f8"},
-    {file = "ping3-2.4.5.tar.gz", hash = "sha256:b7557a2846c3a3dd9da6dcd94d73e2b4c1490ef413d3dc16d9bf32d9b4562d23"},
 ]
 pprintpp = [
     {file = "pprintpp-0.4.0-py2.py3-none-any.whl", hash = "sha256:b6b4dcdd0c0c0d75e4d7b2f21a9e933e5b2ce62b26e1a54537f9651ae5a5c01d"},

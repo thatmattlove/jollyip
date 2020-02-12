@@ -11,7 +11,6 @@ keywords = ["networking", "ping", "icmp", "command line", "cli"]
 
 [tool.poetry.dependencies]
 python = "^3.6"
-ping3 = "^2.4.5"
 click = "^7.0"
 rich = "^0.3.3"
 icmplib = "^1.0.2"
