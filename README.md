@@ -5,7 +5,8 @@
   <strong>Scan an IP range, but happily.</strong>
   <br/>
   <br/>
-  <pre>Jolly IP is the happier, Java-free alternative to Angry IP Scanner.</pre>
+  <pre>
+  Jolly IP is the happier, Java-free alternative to Angry IP Scanner.</pre>
 </div>
 
 ## Installation
