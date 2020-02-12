@@ -7,37 +7,23 @@ import socket
 import ipaddress
 
 # Third Party
-from click import (
-    ParamType,
-    ClickException,
-    echo,
-    style,
-    option,
-    command,
-    confirm,
-    argument,
-)
+from click import option, command, confirm, argument
 from icmplib import ping
 from rich.table import Table
 from rich.console import Console
 
+# Project
+from jollyip.types import NUMBER
+from jollyip.formatting import fail, info, error, success
+
 try:
     import stackprinter
+    from devtools import debug
 
     stackprinter.set_excepthook(style="darkbg2")
 except ImportError:
+    __builtins__["debug"] = debug
     pass
-
-
-INFO = {"fg": "white"}
-LABEL = {"fg": "magenta", "bold": True}
-INFO_SUCCESS = {"fg": "green"}
-LABEL_SUCCESS = {"fg": "green", "bold": True, "underline": True}
-INFO_FAIL = {"fg": "yellow"}
-LABEL_FAIL = {"fg": "yellow", "bold": True, "underline": True}
-ERROR = {"fg": "red", "bold": True}
-WARNING = {"fg": "yellow"}
-WARNING_LABEL = {"fg": "red", "bold": True}
 
 
 def _verify_root():
@@ -60,28 +46,6 @@ def _verify_hostname(host):
         return False
 
 
-class Number(ParamType):
-    """Custom click type to accept an integer or float value."""
-
-    name = "number"
-
-    def convert(self, value, param, ctx):
-        """Validate & convert input value to a float or integer."""
-
-        try:
-            converted = float(value)
-        except ValueError:
-            self.fail(f"'{value}' is not a valid number", param, ctx)
-
-        if converted.is_integer():
-            converted = int(converted)
-
-        return converted
-
-
-NUMBER = Number()
-
-
 def _find_ipv6_prev(ip_range):
     """Parse an IPv6 range such as 2001:db8::1-a.
 
@@ -90,7 +54,7 @@ def _find_ipv6_prev(ip_range):
     start_addr = ipaddress.ip_address(ip_range[0])
     start_host = start_addr.exploded.split(":")[-1]
     start = int(start_host, 16)
-    end = int(ip_range[1], 16)
+    end = int(ip_range[1], 16) - 1
     end_host = hex(start + end)[2:]
     end_addr_str = ":".join(start_addr.exploded.split(":")[:-1] + [end_host])
     end_addr = ipaddress.ip_address(end_addr_str)
@@ -104,33 +68,47 @@ def _parse_ip_range(range_str):
     """
     for section in range_str.split(","):
         ip_range = section.split("-")
+        debug(ip_range)
 
-        if len(ip_range) == 1:
-            # If item is a single host, yield its address object
-            yield ipaddress.ip_address(ip_range[0])
+        try:
+            if len(ip_range) == 1:
+                net = ipaddress.ip_network(ip_range[0], strict=False)
+                if net.num_addresses != 1:
+                    net = net.hosts()
+                for ip in net:
+                    yield ip
 
-        elif len(ip_range) == 2:
-            """
-            If item is a range, summarize the range into multiple
-            subnets, then flatten those subnets into a single iterable
-            of individual address objects.
+            elif len(ip_range) == 2:
+                """
+                If item is a range, summarize the range into multiple
+                subnets, then flatten those subnets into a single iterable
+                of individual address objects.
 
-            If item is in format '192.0.2.1-2', convert to
-            '192.0.2.1-192.0.2.2'.
-            """
-            if bool(re.search(r"^[0-9]+$", ip_range[1])):
-                increase_by = int(ip_range[1]) - 1
-                ip_range[1] = str(ipaddress.ip_address(ip_range[0]) + increase_by)
-            elif bool(re.search(r"^[a-fA-F]$", ip_range[1])):
-                ip_range = _find_ipv6_prev(ip_range)
+                If item is in format '192.0.2.1-2', convert to
+                '192.0.2.1-192.0.2.2'.
+                """
+                start = ipaddress.ip_address(ip_range[0])
 
-            range_obj = tuple(ipaddress.ip_address(ip) for ip in ip_range)
-            range_sum = tuple(ipaddress.summarize_address_range(*range_obj))
-            _target = tuple(ip for net in range_sum for ip in net)
+                if start.version == 4 and bool(re.search(r"^[0-9]+$", ip_range[1])):
+                    end_str = ".".join(ip_range[0].split(".")[:-1] + [ip_range[1]])
+                    end = ipaddress.ip_address(end_str)
 
-            for i in _target:
-                yield i
-        else:
+                elif start.version == 6 and bool(
+                    re.search(r"^[0-9a-fA-F]+$", ip_range[1])
+                ):
+                    start, end = _find_ipv6_prev(ip_range)
+
+                range_sum = tuple(ipaddress.summarize_address_range(start, end))
+                _target = tuple(ip for net in range_sum for ip in net)
+
+                for i in _target:
+                    yield i
+
+            else:
+                raise RuntimeError()
+        except ValueError as e:
+            error(str(e))
+        except RuntimeError:
             raise ValueError()
 
 
@@ -143,7 +121,7 @@ def _process_target(target):
             _target = tuple(_parse_ip_range(target))
             num_hosts = len(_target)
         else:
-            target_base = ipaddress.ip_network(target)
+            target_base = ipaddress.ip_network(target, strict=False)
             if target_base.num_addresses != 1:
                 """
                 If target is a network, return only the usable
@@ -157,33 +135,27 @@ def _process_target(target):
     except ValueError:
         is_resolvable = _verify_hostname(target)
         if not is_resolvable:
-            raise ClickException(style(f"'{target}' is not DNS-resolvable"))
+            error("'{t}' is not DNS-resolvable", t=str(target))
         _target = (is_resolvable,)
 
     return _target, num_hosts
 
 
-CMD_HELP = (
-    style("Ping ", **INFO)
-    + style("<target>\n\n", **LABEL)
-    + style("<target> ", **LABEL)
-    + style("Can be an IPv4 or IPv6 host, subnet, or range, or an FQDN.\n\n", **INFO)
-    + style("Examples:\n", **INFO)
-    + style("\n\n  jollyip ", **INFO)
-    + style("192.0.2.1", **LABEL)
-    + style("\n\n  jollyip ", **INFO)
-    + style("192.0.2.0/24", **LABEL)
-    + style("\n\n  jollyip ", **INFO)
-    + style("192.0.2.1-5", **LABEL)
-    + style("\n\n  jollyip ", **INFO)
-    + style("192.0.2.1-5,9-14", **LABEL)
-    + style("\n\n  jollyip ", **INFO)
-    + style("2001:db8::1", **LABEL)
-    + style("\n\n  jollyip ", **INFO)
-    + style("2001:db8::/126", **LABEL)
-    + style("\n\n  jollyip ", **INFO)
-    + style("2001:db8::1-a", **LABEL)
+HELP1 = info(
+    "Ping {t}\n\n{t} Can be an IPv4 or IPv6 host, subnet, range, or an FQDN.\n\n",
+    t="<target>",
+    callback=None,
 )
+
+HELP2 = info("Examples:", callback=None)
+
+HELP3 = info("\n\njollyip {t}", t="192.0.2.1", callback=None)
+HELP4 = info("\n\njollyip {t}", t="2001:db8::/126", callback=None)
+HELP5 = info("\n\njollyip {t}", t="192.0.2.1-5", callback=None)
+HELP6 = info("\n\njollyip {t}", t="www.google.com", callback=None)
+ALL_HELP = (HELP1, HELP2, HELP3, HELP4, HELP5, HELP6)
+
+CMD_HELP = "".join(ALL_HELP)
 
 
 @command(help=CMD_HELP)
@@ -198,9 +170,10 @@ def run_ping(target, timeout):
     current user ID is equal to 0, or root. If it is not, an error is
     raised.
     """
+
     is_root = _verify_root()
     if not is_root:
-        raise ClickException(style("jollyIP must be run as root", **ERROR))
+        error("jollyIP must be run as root.")
 
     """
     Verify if the input target is an IP address or network. The
@@ -216,23 +189,20 @@ def run_ping(target, timeout):
     if num_targets > 254:
         lots_of_targets = "{:,}".format(num_targets)
         confirm(
-            style("\nYou are trying to reach ", **WARNING)
-            + style(lots_of_targets, **WARNING_LABEL)
-            + style(" targets, which seems like a lot.", **WARNING,)
-            + style("\nAre you sure you want to continue?", **INFO),
+            info(
+                "\nYou are trying to reach {lots} targets, which seems like a lot."
+                + "\nAre you sure you want to continue?",
+                callback=None,
+                lots=lots_of_targets,
+            ),
             show_default=True,
             abort=True,
         )
 
-    echo(
-        style("Starting jolly ping to ", **INFO)
-        + style(str(target), **LABEL)
-        # + source_msg
-        + style("...", **INFO)
-        + "\n"
-    )
+    info("Starting jolly ping to {t}...\n", t=str(target))
+
     tx = 0
-    success = 0
+    successful = 0
     failed = 0
 
     # Create a pretty table to summarize the output.
@@ -251,43 +221,31 @@ def run_ping(target, timeout):
 
             if not response.is_alive:
                 failed += 1
-                echo(
-                    " " * 2
-                    + style(host_str, **LABEL_FAIL)
-                    + style(" is unreachable", **INFO_FAIL)
-                )
+                fail("  {host} is unreachable", host=host_str)
             elif response.is_alive:
-                success += 1
+                successful += 1
                 output = str(round(response.avg_rtt, 2))
-                echo(
-                    " " * 2
-                    + style("Response from ", **INFO_SUCCESS)
-                    + style(host_str, **LABEL_SUCCESS)
-                    + style(" received in ", **INFO_SUCCESS)
-                    + style(output, **LABEL_SUCCESS)
-                    + style(" ms", **INFO_SUCCESS)
+                success(
+                    "  Response from {host} received in {time} ms",
+                    host=host_str,
+                    time=output,
                 )
 
-        echo(
-            "\n"
-            + style("Completed jolly ping to ", **INFO)
-            + style(str(target), **LABEL)
-            + "\n"
-        )
+        info("\nCompleted jolly ping to {host}\n", host=str(target))
 
         # Add the final stats to the table and print the table
-        table.add_row(str(num_targets), str(tx), str(success), str(failed))
+        table.add_row(str(num_targets), str(tx), str(successful), str(failed))
         console.print(table)
 
     except KeyboardInterrupt:
-        echo(style("Stopping ping to ", **INFO) + style(str(target), **LABEL))
+        info("Stopping ping to {host}", host=str(target))
 
         # Add the current stats to the table and print the table
-        table.add_row(str(num_targets), str(tx), str(success), str(failed))
+        table.add_row(str(num_targets), str(tx), str(successful), str(failed))
         console.print(table)
 
         # Halt execution on keyboard interrupt
         sys.exit()
 
     except Exception as e:
-        raise ClickException(style(str(e), **ERROR))
+        error(str(e))

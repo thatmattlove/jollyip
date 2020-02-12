@@ -2,8 +2,12 @@
 name = "jollyip"
 version = "0.0.1"
 description = "Scan an IP range, but happily"
-authors = ["Matt Love"]
+authors = ["Matt Love <matt@allroads.io>"]
 license = "MIT"
+readme = "README.md"
+homepage = "https://github.com/checktheroads/jollyip"
+repository = "https://github.com/checktheroads/jollyip"
+keywords = ["networking", "ping", "icmp", "command line", "cli"]
 
 [tool.poetry.dependencies]
 python = "^3.6"
@@ -14,6 +18,7 @@ icmplib = "^1.0.2"
 
 [tool.poetry.dev-dependencies]
 stackprinter = "^0.2.3"
+devtools = {extras = ["pygments"], version = "^0.5.1"}
 
 [tool.poetry.scripts]
 jollyip = "jollyip.cli:run_ping"
