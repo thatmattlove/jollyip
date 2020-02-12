@@ -1,0 +1,23 @@
+[tool.poetry]
+name = "jollyip"
+version = "0.0.1"
+description = "Scan an IP range, but happily"
+authors = ["Matt Love"]
+license = "MIT"
+
+[tool.poetry.dependencies]
+python = "^3.6"
+ping3 = "^2.4.5"
+click = "^7.0"
+rich = "^0.3.3"
+icmplib = "^1.0.2"
+
+[tool.poetry.dev-dependencies]
+stackprinter = "^0.2.3"
+
+[tool.poetry.scripts]
+jollyip = "jollyip.cli:run_ping"
+
+[build-system]
+requires = ["poetry>=0.12"]
+build-backend = "poetry.masonry.api"
