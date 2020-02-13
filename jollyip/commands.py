@@ -19,11 +19,11 @@ from jollyip.formatting import fail, info, error, success
 try:
     import stackprinter
     from devtools import debug
-
-    stackprinter.set_excepthook(style="darkbg2")
 except ImportError:
-    __builtins__["debug"] = debug
     pass
+else:
+    stackprinter.set_excepthook(style="darkbg2")
+    __builtins__["debug"] = debug
 
 
 def _verify_root():
@@ -68,7 +68,6 @@ def _parse_ip_range(range_str):
     """
     for section in range_str.split(","):
         ip_range = section.split("-")
-        debug(ip_range)
 
         try:
             if len(ip_range) == 1:
