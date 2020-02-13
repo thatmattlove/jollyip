@@ -15,7 +15,7 @@
 $ pip3 install --user jollyip
 ```
 
-- jollyIP requires **Python 3.5 or later**
+- jollyIP requires **Python 3.6 or later**
 - jollyIP must be run as root (`sudo jollyip`)
 
 ## About
