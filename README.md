@@ -11,8 +11,16 @@
 
 ## Installation
 
+### Via [PyPi](https://pypi.org/project/jollyip)
 ```console
 $ pip3 install --user jollyip
+```
+
+### Via [Homebrew](https://brew.sh/) (macOS)
+
+```console
+$ brew tap checktheroads/jollyip
+$ brew install jollyip
 ```
 
 - jollyIP requires **Python 3.6 or later**
